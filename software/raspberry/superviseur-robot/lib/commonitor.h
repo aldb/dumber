@@ -23,7 +23,7 @@
 
 using namespace std;
      
-#define SERVER_PORT 5544
+#define SERVER_PORT 5543
 
 /**
  * Class used for generating a server and communicating through it with monitor
