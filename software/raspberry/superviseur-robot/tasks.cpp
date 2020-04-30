@@ -537,3 +537,19 @@ void Tasks::UpdateBatterie() {
     }
 
 }
+
+int nbErrorComRobot = 0;
+
+void Tasks::CheckMessageRobot(Message* msg){
+    if (msg->GetID()==MESSAGE_ANSWER_ACK){
+        nbErrorComRobot = 0;
+    }
+    else{
+        nbErrorComRobot ++;
+        if (nbErrorComRobot == 3){
+            Message * msgSend = new Message(MESSAGE_MONITOR_LOST);
+            WriteInQueue(&q_messageToMon, msgSend);
+            robot.Close();
+        }
+    }
+}

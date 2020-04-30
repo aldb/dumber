@@ -164,6 +164,8 @@ private:
     Message *ReadInQueue(RT_QUEUE *queue);
     
     void UpdateBatterie() ;
+    
+    void Tasks::CheckMessageRobot(Message* msg);
 
 };
 
