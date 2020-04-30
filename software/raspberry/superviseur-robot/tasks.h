@@ -86,6 +86,7 @@ private:
     RT_MUTEX mutex_robot;
     RT_MUTEX mutex_robotStarted;
     RT_MUTEX mutex_move;
+    RT_MUTEX mutex_nbErrorRobot;
     
 
     /**********************************************************************/
@@ -165,7 +166,7 @@ private:
     
     void UpdateBatterie() ;
     
-    void Tasks::CheckMessageRobot(Message* msg);
+    void CheckMessageRobot(Message* msg);
 
 };
 
