@@ -574,7 +574,7 @@ void Tasks::CheckMessageRobot(Message* msg){
         nbErrorComRobot ++;
         rt_mutex_release(&mutex_nbErrorRobot);
         if (nbErrorComRobot == 3){
-            Message * msgSend = new Message(MESSAGE_MONITOR_LOST);
+            Message * msgSend = new Message(MESSAGE_ANSWER_COM_ERROR);
             WriteInQueue(&q_messageToMon, msgSend);
             LaunchRestart();
             int err;
