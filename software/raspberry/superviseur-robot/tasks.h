@@ -79,6 +79,7 @@ private:
     RT_TASK th_move;
     RT_TASK th_batterie;
     RT_TASK th_watchdog;
+    RT_TASK th_restart;
     /**********************************************************************/
     /* Mutex                                                              */
     /**********************************************************************/
@@ -167,6 +168,12 @@ private:
     void UpdateBatterie() ;
     
     void CheckMessageRobot(Message* msg);
+    
+    void DeleteTasks();
+    
+    void LaunchRestart();
+    
+    void Restart();
 
 };
 

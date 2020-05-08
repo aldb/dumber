@@ -220,6 +220,7 @@ void Tasks::Join() {
     cout << "Tasks synchronized" << endl << flush;
     rt_sem_broadcast(&sem_barrier);
     pause();
+    
 }
 
 /**
@@ -296,13 +297,10 @@ void Tasks::ReceiveFromMonTask(void *arg) {
 
         if (msgRcv->CompareID(MESSAGE_MONITOR_LOST)) {
             cout << "Lost connection with monitor "<<endl<<flush;
-            robot.Write(robot.Stop());
-            Stop();
-            Init();
-            Run();
+            LaunchRestart();
+            rt_task_delete(NULL);
             //camera.Close();
             delete(msgRcv);
-            exit(-1);
         } else if (msgRcv->CompareID(MESSAGE_ROBOT_COM_OPEN)) {
             rt_sem_v(&sem_openComRobot);
         } else if (msgRcv->CompareID(MESSAGE_ROBOT_START_WITHOUT_WD)) {
@@ -446,7 +444,7 @@ void Tasks::WatchDog() {
     
     rt_sem_p(&sem_startRobotWD, TM_INFINITE);
     cout << "watch dog ready"<< endl << flush;
-    rt_task_set_periodic(NULL, TM_NOW, 50000000);
+    rt_task_set_periodic(NULL, TM_NOW, 1000000000);
     while (1) {
         
         if (robotStarted == 1) {
@@ -492,14 +490,14 @@ void Tasks::MoveTask(void *arg) {
             cpMove = move;
             rt_mutex_release(&mutex_move);
 
-            cout << " move: " << cpMove;
+            //cout << " move: " << cpMove;
 
             rt_mutex_acquire(&mutex_robot, TM_INFINITE);
             Message * msg = robot.Write(new Message((MessageID) cpMove));
             rt_mutex_release(&mutex_robot);
             CheckMessageRobot(msg);
         }
-        cout << endl << flush;
+        //cout << endl << flush;
     }
 }
 
@@ -578,9 +576,108 @@ void Tasks::CheckMessageRobot(Message* msg){
         if (nbErrorComRobot == 3){
             Message * msgSend = new Message(MESSAGE_MONITOR_LOST);
             WriteInQueue(&q_messageToMon, msgSend);
-            Stop();
-            Init();
-            Run();
+            LaunchRestart();
+            int err;
+            if (err = rt_task_delete(&th_receiveFromMon)) {
+                cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+                exit(EXIT_FAILURE);
+            }
         }
     }
+}
+
+
+void Tasks::DeleteTasks(){
+    int status;
+    int err;
+    /**************************************************************************************/
+    /* Tasks creation                                                                     */
+    /**************************************************************************************/
+    if (err = rt_task_delete(&th_batterie)) {
+        cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    cout<<"first delete ok"<<endl<<flush;
+    if (err = rt_task_delete(&th_sendToMon)) {
+        cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    
+    cout<<"second delete ok"<<endl<<flush;
+    if (err = rt_task_delete(&th_openComRobot)) {
+        cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    cout<<"3 delete ok"<<endl<<flush;
+    if (err = rt_task_delete(&th_startRobot)) {
+        cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    cout<<"4 delete ok"<<endl<<flush;
+    if (err = rt_task_delete(&th_startRobotWD)) {
+        cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    cout<<"5 delete ok"<<endl<<flush;
+    if (err = rt_task_delete(&th_move)) {
+        cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    cout<<"6 delete ok"<<endl<<flush;
+    //if (err = rt_task_delete(&th_batterie)) {
+    //    cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+    //    exit(EXIT_FAILURE);
+    //}
+    cout<<"7 delete ok"<<endl<<flush;
+    if (err = rt_task_delete(&th_watchdog)) {
+    cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+    exit(EXIT_FAILURE);
+    }
+    cout<<"8 delete ok"<<endl<<flush;
+    //if (err = rt_task_delete(&th_server)) {
+    //    cerr << "Error task DeleteTasks(): " << strerror(-err) << endl << flush;
+    //    exit(EXIT_FAILURE);
+    //}
+
+    cout << "Tasks deleted successfully" << endl << flush;
+     /**************************************************************************************/
+    /* Message queues creation                                                            */
+    /**************************************************************************************/
+    if (err = rt_queue_delete(&q_messageToMon)) {
+        cerr << "Error msg queue delete: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    cout << "Queues deleted successfully" << endl << flush;
+}
+
+
+void Tasks::LaunchRestart(){
+    int err;
+   
+    cout<<"Init task restart"<<endl<<flush;
+    if (err = rt_task_create(&th_restart, "th_restart", 0, PRIORITY_TSERVER, 0)) {
+        cerr << "Error task create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    cout<<"Run task restart"<<endl<<flush;
+    if (err = rt_task_start(&th_restart, (void(*)(void*)) & Tasks::Restart, this)) {
+        cerr << "Error task start: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void Tasks::Restart(){
+    
+    cout<<"DeleteTask"<<endl<<flush;
+    DeleteTasks();
+    cout<<"Stop"<<endl<<flush;
+    Stop();
+    cout<<"Init"<<endl<<flush;
+    robotStarted = 0;
+    move = MESSAGE_ROBOT_STOP;
+    nbErrorComRobot = 0;
+    Init();
+    Run();
+    rt_sem_broadcast(&sem_barrier);
+    rt_task_delete(NULL);
 }
